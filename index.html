@@ -84,10 +84,10 @@
 
     // Sprites configured with varying dimensions and layer depths
     const sprites = [
-        createSprite(ASSETS.player, 400, 200, 300, 300, 2),
-        createSprite(ASSETS.moln1,  150, 100, 100,100, 1),
-        createSprite(ASSETS.moln2,  300, 100, 100,100, 1),
-        createSprite(ASSETS.moln3,  500, 100, 100,100, 1),
+        createSprite(ASSETS.player, 400, 200, 200, 200, 2),
+        createSprite(ASSETS.moln1,  20, 0, 220, 220, 1),
+        createSprite(ASSETS.moln2,  325, 50, 220, 220, 1),
+        createSprite(ASSETS.moln3,  530, 25, 290, 220, 1),
     ];
 
     const player = sprites[0];
@@ -104,10 +104,10 @@
     }
 
     function update() {
-        if (keys['ArrowUp'] || keys['w']) player.y -= 5;
-        if (keys['ArrowDown'] || keys['s']) player.y += 5;
-        if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
-        if (keys['ArrowRight'] || keys['d']) player.x += 5;
+        if (keys['ArrowUp'] || keys['w']) player.y -= 2;
+        if (keys['ArrowDown'] || keys['s']) player.y += 2;
+        if (keys['ArrowLeft'] || keys['a']) player.x -= 2;
+        if (keys['ArrowRight'] || keys['d']) player.x += 2;
 
         player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
         player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
