@@ -43,7 +43,10 @@
         background: "art/background.jpg",
         player: "art/Balettmusen.png",
         tree: "art/tree.png",
-        rock: "art/rock.png"
+        rock: "art/rock.png",
+        moln1: "art/moln_1.png",
+        moln2: "art/moln_2.png",
+        moln3: "art/moln_3.png"
     };
 
     // --- GAME ENTITIES ---
@@ -83,7 +86,10 @@
         createSprite(ASSETS.player, 400, 300, 64, 64, 2, 5),    // Player
         createSprite(ASSETS.tree,   150, 100, 120, 180, 1),   // Big Tree (Background)
         createSprite(ASSETS.tree,   550, 300, 80, 120, 3),    // Small Tree (Foreground)
-        createSprite(ASSETS.rock,   300, 420, 100, 60, 1)     // Rock
+        createSprite(ASSETS.rock,   300, 420, 100, 60, 1),     // Rock
+        createSprite(ASSETS.moln1,  150, 100, 100,100, 1),
+        createSprite(ASSETS.moln2,  300, 100, 100,100, 1),
+        createSprite(ASSETS.moln3,  500, 100, 100,100, 1),
     ];
     
     const player = sprites[0];
