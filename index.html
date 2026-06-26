@@ -38,8 +38,13 @@
     const V_WIDTH = 800;
     const V_HEIGHT = 600;
 
+    // --- FPS COUNTER STATE ---
+    let lastTime = performance.now();
+    let fps = 0;
+    let frameCount = 0;
+    let fpsTimer = 0;
+
     // --- ART ASSET PATHS ---
-    // The engine looks inside the local "art" directory for these transparent PNGs
     const ASSETS = {
         background: "art/background.jpg",
         player: "art/Balettmusen.png",
@@ -51,7 +56,6 @@
     };
 
     // --- GAME ENTITIES ---
-    // Load the background image
     const backgroundImage = new Image();
     backgroundImage.src = ASSETS.background;
    
@@ -69,10 +73,10 @@
         const touchX = (e.touches[0].clientX - rect.left) * scaleX;
         const touchY = (e.touches[0].clientY - rect.top) * scaleY;
 
-        if (touchX < player.x) player.x -= player.speed;
-        if (touchX > player.x) player.x += player.speed;
-        if (touchY < player.y) player.y -= player.speed;
-        if (touchY > player.y) player.y += player.speed;
+        if (touchX < player.x) player.x -= 2;
+        if (touchX > player.x) player.x += 2;
+        if (touchY < player.y) player.y -= 2;
+        if (touchY > player.y) player.y += 2;
     }
 
     // --- SPRITE BUILDER ---
@@ -82,10 +86,9 @@
         return { img, x, y, w, h, z};
     }
 
-    // Sprites configured with varying dimensions and layer depths
     const sprites = [
         createSprite(ASSETS.player, 400, 200, 200, 200, 2),
-        createSprite(ASSETS.moln1,  20, 0, 220, 220, 1),
+        createSprite(ASSETS.moln1,  20, -40, 220, 220, 1),
         createSprite(ASSETS.moln2,  325, 50, 220, 220, 1),
         createSprite(ASSETS.moln3,  530, 25, 290, 220, 1),
     ];
@@ -98,8 +101,6 @@
         canvas.width = V_WIDTH * scale;
         canvas.height = V_HEIGHT * scale;
         ctx.scale(scale, scale);
-
-        // Keeps your custom PNG pixel art crisp when scaling up
         ctx.imageSmoothingEnabled = false;
     }
 
@@ -114,7 +115,7 @@
     }
 
     function render() {
-        // 1. Draw Background Image (Fallback to color if still loading)
+        // 1. Draw Background Image
         if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) {
             ctx.drawImage(backgroundImage, 0, 0, V_WIDTH, V_HEIGHT);
         } else {
@@ -129,23 +130,42 @@
         for (let i = 0; i < sprites.length; i++) {
             const s = sprites[i];
 
-            // Only draw if the browser has successfully loaded the file
             if (s.img.complete && s.img.naturalWidth !== 0) {
                 ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
             } else {
-                // Temporary vector fallback block while image is loading or missing
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.fillRect(s.x, s.y, s.w, s.h);
             }
 
-            // Label showing current Z-Index depth
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.font = '10px monospace';
             ctx.fillText(`Z: ${s.z}`, s.x, s.y - 4);
         }
+
+        // 2. Render FPS Overlay (Drawn last so it sits on top of all sprites)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(10, 10, 55, 22);
+        ctx.fillStyle = '#00ffcc';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`FPS: ${fps}`, 15, 25);
     }
 
-    function gameLoop() {
+    function gameLoop(currentTime) {
+        // Calculate delta time
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        // Track frame execution metrics
+        frameCount++;
+        fpsTimer += deltaTime;
+
+        // Refresh counter every 500ms
+        if (fpsTimer >= 500) {
+            fps = Math.round((frameCount * 1000) / fpsTimer);
+            frameCount = 0;
+            fpsTimer = 0;
+        }
+
         update();
         render();
         requestAnimationFrame(gameLoop);
@@ -153,7 +173,9 @@
 
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
-    requestAnimationFrame(gameLoop);
+    
+    // Pass timestamp to the initial loop frame step
+    requestAnimationFrame((time) => gameLoop(time));
 </script>
 
 </body>
