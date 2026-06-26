@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2D Sprite Engine Prototype</title>
+    <title>Balettmusen</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <style>
         * {
@@ -54,7 +54,7 @@
     // Load the background image
     const backgroundImage = new Image();
     backgroundImage.src = ASSETS.background;
-    
+   
     // --- ENGINE INPUT ---
     const keys = {};
     window.addEventListener('keydown', (e) => keys[e.key] = true);
@@ -68,7 +68,7 @@
         const scaleY = V_HEIGHT / rect.height;
         const touchX = (e.touches[0].clientX - rect.left) * scaleX;
         const touchY = (e.touches[0].clientY - rect.top) * scaleY;
-        
+
         if (touchX < player.x) player.x -= player.speed;
         if (touchX > player.x) player.x += player.speed;
         if (touchY < player.y) player.y -= player.speed;
@@ -76,23 +76,20 @@
     }
 
     // --- SPRITE BUILDER ---
-    function createSprite(imgSrc, x, y, w, h, z, speed = 0) {
+    function createSprite(imgSrc, x, y, w, h, z) {
         const img = new Image();
         img.src = imgSrc;
-        return { img, x, y, w, h, z, speed };
+        return { img, x, y, w, h, z};
     }
 
     // Sprites configured with varying dimensions and layer depths
     const sprites = [
-        createSprite(ASSETS.player, 400, 300, 64, 64, 2, 5),    // Player
-        createSprite(ASSETS.tree,   150, 100, 120, 180, 1),   // Big Tree (Background)
-        createSprite(ASSETS.tree,   550, 300, 80, 120, 3),    // Small Tree (Foreground)
-        createSprite(ASSETS.rock,   300, 420, 100, 60, 1),     // Rock
+        createSprite(ASSETS.player, 400, 200, 300, 300, 2),
         createSprite(ASSETS.moln1,  150, 100, 100,100, 1),
         createSprite(ASSETS.moln2,  300, 100, 100,100, 1),
         createSprite(ASSETS.moln3,  500, 100, 100,100, 1),
     ];
-    
+
     const player = sprites[0];
 
     // --- GAME ENGINE PROCESSES ---
@@ -101,42 +98,28 @@
         canvas.width = V_WIDTH * scale;
         canvas.height = V_HEIGHT * scale;
         ctx.scale(scale, scale);
-        
+
         // Keeps your custom PNG pixel art crisp when scaling up
         ctx.imageSmoothingEnabled = false;
     }
 
     function update() {
-        if (keys['ArrowUp'] || keys['w']) player.y -= player.speed;
-        if (keys['ArrowDown'] || keys['s']) player.y += player.speed;
-        if (keys['ArrowLeft'] || keys['a']) player.x -= player.speed;
-        if (keys['ArrowRight'] || keys['d']) player.x += player.speed;
+        if (keys['ArrowUp'] || keys['w']) player.y -= 5;
+        if (keys['ArrowDown'] || keys['s']) player.y += 5;
+        if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
+        if (keys['ArrowRight'] || keys['d']) player.x += 5;
 
         player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
         player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
     }
 
     function render() {
-        // Clear screen with a background color
-        ctx.fillStyle = '#243b53';
-        ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
-
         // 1. Draw Background Image (Fallback to color if still loading)
         if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) {
             ctx.drawImage(backgroundImage, 0, 0, V_WIDTH, V_HEIGHT);
         } else {
             ctx.fillStyle = '#243b53';
             ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
-        }    
-
-        // Draw decorative floor grid lines
-        ctx.strokeStyle = '#334e68';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < V_WIDTH; x += 50) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, V_HEIGHT); ctx.stroke();
-        }
-        for (let y = 0; y < V_HEIGHT; y += 50) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(V_WIDTH, y); ctx.stroke();
         }
 
         // Sort by Z Layer priority
@@ -145,7 +128,7 @@
         // Draw Images
         for (let i = 0; i < sprites.length; i++) {
             const s = sprites[i];
-            
+
             // Only draw if the browser has successfully loaded the file
             if (s.img.complete && s.img.naturalWidth !== 0) {
                 ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
@@ -154,7 +137,7 @@
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.fillRect(s.x, s.y, s.w, s.h);
             }
-            
+
             // Label showing current Z-Index depth
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.font = '10px monospace';
