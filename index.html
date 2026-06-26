@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D Sprite Engine Prototype</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            background-color: #334e68;
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const V_WIDTH = 800;
+    const V_HEIGHT = 600;
+
+    // --- ART ASSET PATHS ---
+    // The engine looks inside the local "art" directory for these transparent PNGs
+    const ASSETS = {
+        background: "art/background.jpg",
+        player: "art/Balettmusen.png",
+        tree: "art/tree.png",
+        rock: "art/rock.png"
+    };
+
+    // --- GAME ENTITIES ---
+    // Load the background image
+    const backgroundImage = new Image();
+    backgroundImage.src = ASSETS.background;
+    
+    // --- ENGINE INPUT ---
+    const keys = {};
+    window.addEventListener('keydown', (e) => keys[e.key] = true);
+    window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+    window.addEventListener('touchstart', handleTouch);
+    window.addEventListener('touchmove', handleTouch);
+    function handleTouch(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = V_WIDTH / rect.width;
+        const scaleY = V_HEIGHT / rect.height;
+        const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+        const touchY = (e.touches[0].clientY - rect.top) * scaleY;
+        
+        if (touchX < player.x) player.x -= player.speed;
+        if (touchX > player.x) player.x += player.speed;
+        if (touchY < player.y) player.y -= player.speed;
+        if (touchY > player.y) player.y += player.speed;
+    }
+
+    // --- SPRITE BUILDER ---
+    function createSprite(imgSrc, x, y, w, h, z, speed = 0) {
+        const img = new Image();
+        img.src = imgSrc;
+        return { img, x, y, w, h, z, speed };
+    }
+
+    // Sprites configured with varying dimensions and layer depths
+    const sprites = [
+        createSprite(ASSETS.player, 400, 300, 64, 64, 2, 5),    // Player
+        createSprite(ASSETS.tree,   150, 100, 120, 180, 1),   // Big Tree (Background)
+        createSprite(ASSETS.tree,   550, 300, 80, 120, 3),    // Small Tree (Foreground)
+        createSprite(ASSETS.rock,   300, 420, 100, 60, 1)     // Rock
+    ];
+    
+    const player = sprites[0];
+
+    // --- GAME ENGINE PROCESSES ---
+    function resizeCanvas() {
+        const scale = Math.min(window.innerWidth / V_WIDTH, window.innerHeight / V_HEIGHT);
+        canvas.width = V_WIDTH * scale;
+        canvas.height = V_HEIGHT * scale;
+        ctx.scale(scale, scale);
+        
+        // Keeps your custom PNG pixel art crisp when scaling up
+        ctx.imageSmoothingEnabled = false;
+    }
+
+    function update() {
+        if (keys['ArrowUp'] || keys['w']) player.y -= player.speed;
+        if (keys['ArrowDown'] || keys['s']) player.y += player.speed;
+        if (keys['ArrowLeft'] || keys['a']) player.x -= player.speed;
+        if (keys['ArrowRight'] || keys['d']) player.x += player.speed;
+
+        player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
+        player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
+    }
+
+    function render() {
+        // Clear screen with a background color
+        ctx.fillStyle = '#243b53';
+        ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+        // 1. Draw Background Image (Fallback to color if still loading)
+        if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) {
+            ctx.drawImage(backgroundImage, 0, 0, V_WIDTH, V_HEIGHT);
+        } else {
+            ctx.fillStyle = '#243b53';
+            ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+        }    
+
+        // Draw decorative floor grid lines
+        ctx.strokeStyle = '#334e68';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < V_WIDTH; x += 50) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, V_HEIGHT); ctx.stroke();
+        }
+        for (let y = 0; y < V_HEIGHT; y += 50) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(V_WIDTH, y); ctx.stroke();
+        }
+
+        // Sort by Z Layer priority
+        sprites.sort((a, b) => a.z - b.z);
+
+        // Draw Images
+        for (let i = 0; i < sprites.length; i++) {
+            const s = sprites[i];
+            
+            // Only draw if the browser has successfully loaded the file
+            if (s.img.complete && s.img.naturalWidth !== 0) {
+                ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+            } else {
+                // Temporary vector fallback block while image is loading or missing
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(s.x, s.y, s.w, s.h);
+            }
+            
+            // Label showing current Z-Index depth
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '10px monospace';
+            ctx.fillText(`Z: ${s.z}`, s.x, s.y - 4);
+        }
+    }
+
+    function gameLoop() {
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>
