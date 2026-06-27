@@ -80,17 +80,18 @@
     }
 
     // --- SPRITE BUILDER ---
-    function createSprite(imgSrc, x, y, w, h, z) {
+    function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false) {
         const img = new Image();
         img.src = imgSrc;
-        return { img, x, y, w, h, z};
+        return { img, x, y, w, h, z, flipX, flipY };
     }
 
+
     const sprites = [
-        createSprite(ASSETS.player, 400, 200, 200, 200, 2),
-        createSprite(ASSETS.moln1,  20, -40, 220, 220, 1),
-        createSprite(ASSETS.moln2,  325, 50, 220, 220, 1),
-        createSprite(ASSETS.moln3,  530, 25, 290, 220, 1),
+        createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false),
+        createSprite(ASSETS.moln1,  20, -40, 220, 220, 1, false, false),
+        createSprite(ASSETS.moln2,  325, 50, 220, 220, 1, false, false),
+        createSprite(ASSETS.moln3,  530, 25, 290, 220, 1, false, false),
     ];
 
     const player = sprites[0];
@@ -107,8 +108,14 @@
     function update() {
         if (keys['ArrowUp'] || keys['w']) player.y -= 2;
         if (keys['ArrowDown'] || keys['s']) player.y += 2;
-        if (keys['ArrowLeft'] || keys['a']) player.x -= 2;
-        if (keys['ArrowRight'] || keys['d']) player.x += 2;
+        if (keys['ArrowLeft'] || keys['a']) {
+            player.x -= 2; 
+            player.flipX = true;
+        }
+        if (keys['ArrowRight'] || keys['d']) {
+            player.x += 2;
+            player.flipX = false;
+        }
 
         player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
         player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
@@ -131,7 +138,22 @@
             const s = sprites[i];
 
             if (s.img.complete && s.img.naturalWidth !== 0) {
-                ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+                // Save context state before applying coordinate manipulations
+                ctx.save();
+
+                // Move canvas origin to the center of the sprite
+                ctx.translate(s.x + s.w / 2, s.y + s.h / 2);
+
+                // Flip coordinates if property flags are true
+                const scaleX = s.flipX ? -1 : 1;
+                const scaleY = s.flipY ? -1 : 1;
+                ctx.scale(scaleX, scaleY);
+
+                // Draw image centered at the origin (0, 0)
+                ctx.drawImage(s.img, -s.w / 2, -s.h / 2, s.w, s.h);
+
+                // Revert canvas grid configuration for next item 
+                ctx.restore();
             } else {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.fillRect(s.x, s.y, s.w, s.h);
