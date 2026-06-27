@@ -135,9 +135,6 @@
                 ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
             }
 
-            // Sort by Z Layer priority
-            sprites.sort((a, b) => a.z - b.z);
-
             // Draw Images
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
@@ -194,6 +191,10 @@
             }
 
             update();
+
+            // Sort by Z Layer priority
+            sprites.sort((a, b) => a.z - b.z);
+
             render();
             requestAnimationFrame(gameLoop);
         }
