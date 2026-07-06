@@ -86,37 +86,56 @@
             if (touchY > player.y) player.y += 2;
         }
 
+        // --- SEPARATE ANIMATION SYSTEM DATA STRUCTURES ---
+
+        // Factory for animation configurations (shared data template)
+        function createAnimationConfig(frameSourcesArray, interval) {
+            const frames = frameSourcesArray.map(src => {
+                const img = new Image();
+                img.src = src;
+                return img;
+            });
+            return {frames, interval};
+        }
+
+        // Factory for tracking the runtime state of a specific animation attached to an entity
+        function createAnimationInstance(animationConfig) {
+            return {
+                config: animationConfig,
+                timer: 0,
+                currentFrameIndex: 0,
+                isActive: true
+            };
+        }
+
+        // Global animation registry/library configurations
+        const ANIMATIONS = {
+            playerRun: createAnimationConfig([ASSETS.playerRun1, ASSETS.playerRun2], 125)
+        };
+
         // --- SPRITE BUILDER ---
-        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false, framesArray = [], interval = 200) {
+        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false) {
             const img = new Image();
             img.src = imgSrc;
-
-            // Pre-load animation frames into Image instances if provided
-            const frames = framesArray.map(src => {
-                const fImg = new Image();
-                fImg.src = src;
-                return fImg;
-            });
-
             return {
                 img,
                 x, y, w, h, z, flipX, flipY,
-                frames,
-                animationInterval: interval,
-                animationTimer: 0,
-                currentFrame: 0,
-                isAnimating: frames.length > 0
+                animation: null // Slot where an animation data structure can be attached
             };
         }
 
         const sprites = [
-            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, [ASSETS.playerRun1, ASSETS.playerRun2], 100),
+            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false),
             createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false),
             createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false),
             createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false),
         ];
 
         const player = sprites[0];
+
+        // Attaching the standalone animation data structure to our player sprite
+        player.animation = createAnimationInstance(ANIMATIONS.playerRun);
+
 
         // --- GAME ENGINE PROCESSES ---
         function resizeCanvas() {
@@ -146,24 +165,26 @@
             player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
             player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
 
-            // Run system animations based on elapsed time delta
+            // Run the animation component processor system
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
-                if (s.isAnimating) {
-                    // Rule: Only toggle frames when the entity is actually moving
+
+                if (s.animation && s.animation.isActive) {
+                    const anim = s.animation;
+
+                    // Specific handling logic for our player tracking movement state
                     if (s === player && !isMoving) {
-                        s.currentFrame = -1; // Flag to render base/default player art
-                        s.animationTimer = 0;
+                        anim.currentFrameIndex = -1; // Use default static sprite image flag
+                        anim.timer = 0;
                         continue;
                     }
 
-                    // Reset context framework state if returning from idle state
-                    if (s.currentFrame === -1) s.currentFrame = 0;
+                    if (anim.currentFrameIndex === -1) anim.currentFrameIndex = 0;
 
-                    s.animationTimer += deltaTime;
-                    if (s.animationTimer >= s.animationInterval) {
-                        s.currentFrame = (s.currentFrame + 1) % s.frames.length;
-                        s.animationTimer = 0;
+                    anim.timer += deltaTime;
+                    if (anim.timer >= anim.config.interval) {
+                        anim.currentFrameIndex = (anim.currentFrameIndex + 1) % anim.config.frames.length;
+                        anim.timer = 0;
                     }
                 }
             }
@@ -182,10 +203,11 @@
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
 
-                // Switch between standard sheet asset and animation frames mapping
+                // Determine which target image reference to draw
                 let activeImg = s.img;
-                if (s.isAnimating && s.currentFrame >= 0 && s.frames[s.currentFrame]) {
-                    activeImg = s.frames[s.currentFrame];
+                if (s.animation && s.animation.currentFrameIndex >= 0) {
+                    const activeFrame = s.animation.config.frames[s.animation.currentFrameIndex];
+                    if (activeFrame) activeImg = activeFrame;
                 }
 
                 if (activeImg.complete && activeImg.naturalWidth !== 0) {
