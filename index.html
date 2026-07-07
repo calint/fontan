@@ -44,7 +44,7 @@
         const V_HEIGHT = 600;
 
         // --- PHYSICS GLOBAL ---
-        const FLOOR_Y = 450;
+        const FLOOR_Y = 454;
 
         // --- FPS COUNTER STATE ---
         let lastTime = performance.now();
@@ -198,12 +198,6 @@
                     }
                 }
             }
-
-            // Screen boundaries
-            player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
-            player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
-
-            // ... (rest of the animation engine code stays identical)
 
             // Screen boundaries
             player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
