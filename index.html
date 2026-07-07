@@ -130,7 +130,7 @@
 
         const sprites = [
             // Added velocity (0) and gravity (0.2) to the player sprite
-            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.2),
+            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.4),
             createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
@@ -159,8 +159,8 @@
             player.vx = 0;
 
             // Manual Vertical Controls
-            if (keys['ArrowUp'] || keys['w']) {player.y -= 2; isMoving = true;}
-            if (keys['ArrowDown'] || keys['s']) {player.y += 2; isMoving = true;}
+            if (keys['ArrowUp'] || keys['w']) {player.vy -= 0.5; isMoving = true;}
+            if (keys['ArrowDown'] || keys['s']) {player.vy += 0.5; isMoving = true;}
 
             // Horizontal Controls update vx
             if (keys['ArrowLeft'] || keys['a']) {
@@ -193,7 +193,7 @@
 
                         // Rhythmic skipping effect while moving on the floor
                         if (s === player && isMoving) {
-                            s.vy = -1;
+                            s.vy = -2;
                         }
                     }
                 }
