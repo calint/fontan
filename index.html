@@ -43,6 +43,9 @@
         const V_WIDTH = 800;
         const V_HEIGHT = 600;
 
+        // --- PHYSICS GLOBAL ---
+        const FLOOR_Y = 450;
+
         // --- FPS COUNTER STATE ---
         let lastTime = performance.now();
         let fps = 0;
@@ -114,21 +117,23 @@
         };
 
         // --- SPRITE BUILDER ---
-        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false) {
+        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false, vx = 0, vy = 0, gravity = 0) {
             const img = new Image();
             img.src = imgSrc;
             return {
                 img,
                 x, y, w, h, z, flipX, flipY,
-                animation: null // Slot where an animation data structure can be attached
+                vx, vy, gravity,
+                animation: null
             };
         }
 
         const sprites = [
-            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false),
-            createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false),
-            createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false),
-            createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false),
+            // Added velocity (0) and gravity (0.2) to the player sprite
+            createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.2),
+            createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
+            createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
+            createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
         ];
 
         const player = sprites[0];
@@ -150,19 +155,57 @@
         function update(deltaTime) {
             let isMoving = false;
 
+            // Reset horizontal velocity
+            player.vx = 0;
+
+            // Manual Vertical Controls
             if (keys['ArrowUp'] || keys['w']) {player.y -= 2; isMoving = true;}
             if (keys['ArrowDown'] || keys['s']) {player.y += 2; isMoving = true;}
+
+            // Horizontal Controls update vx
             if (keys['ArrowLeft'] || keys['a']) {
-                player.x -= 2;
+                player.vx = -2;
                 player.flipX = true;
                 isMoving = true;
             }
             if (keys['ArrowRight'] || keys['d']) {
-                player.x += 2;
+                player.vx = 2;
                 player.flipX = false;
                 isMoving = true;
             }
 
+            // Apply velocities and gravity
+            for (let i = 0; i < sprites.length; i++) {
+                const s = sprites[i];
+
+                // Apply horizontal velocity
+                s.x += s.vx;
+
+                // Apply gravity and vertical velocity
+                if (s.gravity > 0) {
+                    s.vy += s.gravity;
+                    s.y += s.vy;
+
+                    // Floor Collision Logic
+                    if (s.y + s.h >= FLOOR_Y) {
+                        s.y = FLOOR_Y - s.h;
+                        s.vy = 0;
+
+                        // Rhythmic skipping effect while moving on the floor
+                        if (s === player && isMoving) {
+                            s.vy = -1;
+                        }
+                    }
+                }
+            }
+
+            // Screen boundaries
+            player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
+            player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
+
+            // ... (rest of the animation engine code stays identical)
+
+            // Screen boundaries
             player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
             player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
 
@@ -199,6 +242,13 @@
                 ctx.fillStyle = '#243b53';
                 ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
             }
+
+            // Optional: Draw floor visual line for debug/reference
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(0, FLOOR_Y);
+            ctx.lineTo(V_WIDTH, FLOOR_Y);
+            ctx.stroke();
 
             // Draw Images
             for (let i = 0; i < sprites.length; i++) {
