@@ -46,6 +46,9 @@
         // --- PHYSICS GLOBAL ---
         const FLOOR_Y = 454;
 
+        // --- GAME STATE ---
+        let score = 0;
+
         // --- FPS COUNTER STATE ---
         let lastTime = performance.now();
         let fps = 0;
@@ -93,7 +96,6 @@
 
         // --- SEPARATE ANIMATION SYSTEM DATA STRUCTURES ---
 
-        // Factory for animation configurations (shared data template)
         function createAnimationConfig(frameSourcesArray, interval) {
             const frames = frameSourcesArray.map(src => {
                 const img = new Image();
@@ -103,7 +105,6 @@
             return {frames, interval};
         }
 
-        // Factory for tracking the runtime state of a specific animation attached to an entity
         function createAnimationInstance(animationConfig) {
             return {
                 config: animationConfig,
@@ -113,7 +114,6 @@
             };
         }
 
-        // Global animation registry/library configurations
         const ANIMATIONS = {
             playerRun: createAnimationConfig([ASSETS.playerRun1, ASSETS.playerRun2], 125),
             monsterWalk: createAnimationConfig([ASSETS.monsterWalk1, ASSETS.monsterWalk2], 150)
@@ -131,20 +131,86 @@
             };
         }
 
+        const MONSTER_VX = 1;
+
         const sprites = [
             createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.4),
             createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
-            createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 2, false, false, 1, 0, 0)
+            createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 2, false, false, MONSTER_VX, 0, 0)
         ];
 
         const player = sprites[0];
         const monster = sprites[4];
 
-        // Attaching the standalone animation data structures to sprites
         player.animation = createAnimationInstance(ANIMATIONS.playerRun);
         monster.animation = createAnimationInstance(ANIMATIONS.monsterWalk);
+
+        // Helper to get currently active frame image for a sprite
+        function getActiveSpriteImage(s) {
+            let activeImg = s.img;
+            if (s.animation && s.animation.currentFrameIndex >= 0) {
+                const activeFrame = s.animation.config.frames[s.animation.currentFrameIndex];
+                if (activeFrame) activeImg = activeFrame;
+            }
+            return activeImg;
+        }
+
+        const collisionCanvas = document.createElement('canvas');
+        const collisionCtx = collisionCanvas.getContext('2d', {willReadFrequently: true});
+
+        // --- PIXEL COLLISION ENGINE NARROW PHASE ---
+        function checkPixelCollision(s1, s2) {
+            const img1 = getActiveSpriteImage(s1);
+            const img2 = getActiveSpriteImage(s2);
+
+            if (!img1.complete || !img2.complete) return false;
+
+            // 1. Determine bounding box intersection metrics
+            const interX = Math.max(s1.x, s2.x);
+            const interY = Math.max(s1.y, s2.y);
+
+            // Strict bounding check: Ensure dimensions are strictly greater than zero before processing
+            const interW = Math.floor(Math.min(s1.x + s1.w, s2.x + s2.w) - interX);
+            const interH = Math.floor(Math.min(s1.y + s1.h, s2.y + s2.h) - interY);
+
+            if (interW <= 0 || interH <= 0) return false;
+
+            // 2. Setup small offscreen canvas matching intersection size
+            collisionCanvas.width = interW;
+            collisionCanvas.height = interH;
+
+            // 3. Draw Sprite 1 relative to offscreen coordinate space
+            collisionCtx.clearRect(0, 0, interW, interH);
+            collisionCtx.save();
+            collisionCtx.translate(s1.x + s1.w / 2 - interX, s1.y + s1.h / 2 - interY);
+            collisionCtx.scale(s1.flipX ? -1 : 1, s1.flipY ? -1 : 1);
+            collisionCtx.drawImage(img1, -s1.w / 2, -s1.h / 2, s1.w, s1.h);
+            collisionCtx.restore();
+
+            // 4. Change composite mode: keep pixels *only* where something new overlaps existing pixels
+            collisionCtx.globalCompositeOperation = 'source-in';
+
+            // 5. Draw Sprite 2
+            collisionCtx.save();
+            collisionCtx.translate(s2.x + s2.w / 2 - interX, s2.y + s2.h / 2 - interY);
+            collisionCtx.scale(s2.flipX ? -1 : 1, s2.flipY ? -1 : 1);
+            collisionCtx.drawImage(img2, -s2.w / 2, -s2.h / 2, s2.w, s2.h);
+            collisionCtx.restore();
+
+            // Reset composite operation for safety
+            collisionCtx.globalCompositeOperation = 'source-over';
+
+            // 6. Look through the resulting image data buffer for solid pixels (alpha > 0)
+            const imgData = collisionCtx.getImageData(0, 0, interW, interH).data;
+            for (let i = 3; i < imgData.length; i += 4) {
+                if (imgData[i] > 10) { // Threshold level ignoring extreme semi-transparency 
+                    return true;
+                }
+            }
+            return false;
+        }
 
         // --- GAME ENGINE PROCESSES ---
         function resizeCanvas() {
@@ -155,18 +221,13 @@
             ctx.imageSmoothingEnabled = false;
         }
 
-
         function update(deltaTime) {
             let isMoving = false;
-
-            // Reset horizontal velocity
             player.vx = 0;
 
-            // Manual Vertical Controls
             if (keys['ArrowUp'] || keys['w']) {player.vy -= 0.5; isMoving = true;}
             if (keys['ArrowDown'] || keys['s']) {player.vy += 0.5; isMoving = true;}
 
-            // Horizontal Controls update vx
             if (keys['ArrowLeft'] || keys['a']) {
                 player.vx = -2;
                 player.flipX = true;
@@ -178,33 +239,26 @@
                 isMoving = true;
             }
 
-            // --- MONSTER MOVEMENT & EDGE TURNAROUND ---
             if (monster.x <= 0) {
-                monster.vx = 1;
-                monster.flipX = false; // Walk right
+                monster.vx = MONSTER_VX;
+                monster.flipX = false;
             } else if (monster.x + monster.w >= V_WIDTH) {
-                monster.vx = -1;
-                monster.flipX = true;  // Walk left
+                monster.vx = -MONSTER_VX;
+                monster.flipX = true;
             }
 
-            // Apply velocities and gravity
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
-
-                // Apply horizontal velocity
                 s.x += s.vx;
 
-                // Apply gravity and vertical velocity
                 if (s.gravity > 0) {
                     s.vy += s.gravity;
                     s.y += s.vy;
 
-                    // Floor Collision Logic
                     if (s.y + s.h >= FLOOR_Y) {
                         s.y = FLOOR_Y - s.h;
                         s.vy = 0;
 
-                        // Rhythmic skipping effect while moving on the floor
                         if (s === player && isMoving) {
                             s.vy = -2;
                         }
@@ -212,20 +266,36 @@
                 }
             }
 
-            // Screen boundaries
             player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
             player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
 
-            // Run the animation component processor system
+            // --- STOMP DETECTION SYSTEM (AABB + PIXEL PERFECT NARROW CHECK) ---
+            if (player.x < monster.x + monster.w &&
+                player.x + player.w > monster.x &&
+                player.y < monster.y + monster.h &&
+                player.y + player.h > monster.y) {
+
+                // Broad phase verified, now running fine-tuned pixel scan
+                if (checkPixelCollision(player, monster)) {
+                    // Check if player's feet are structurally falling on the upper half quadrant profile
+                    if (player.vy > 0 && (player.y + player.h - player.vy) <= monster.y + monster.h * 0.5) {
+                        score += 1;
+                        player.vy = -6;
+
+                        monster.x = Math.floor(Math.random() * 150);
+                        monster.vx = 2;
+                        monster.flipX = false;
+                    }
+                }
+            }
+
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
-
                 if (s.animation && s.animation.isActive) {
                     const anim = s.animation;
 
-                    // Specific handling logic for our player tracking movement state
                     if (s === player && !isMoving) {
-                        anim.currentFrameIndex = -1; // Use default static sprite image flag
+                        anim.currentFrameIndex = -1;
                         anim.timer = 0;
                         continue;
                     }
@@ -242,7 +312,6 @@
         }
 
         function render() {
-            // 1. Draw Background Image
             if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) {
                 ctx.drawImage(backgroundImage, 0, 0, V_WIDTH, V_HEIGHT);
             } else {
@@ -250,40 +319,21 @@
                 ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
             }
 
-            // Optional: Draw floor visual line for debug/reference
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
             ctx.moveTo(0, FLOOR_Y);
             ctx.lineTo(V_WIDTH, FLOOR_Y);
             ctx.stroke();
 
-            // Draw Images
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
-
-                // Determine which target image reference to draw
-                let activeImg = s.img;
-                if (s.animation && s.animation.currentFrameIndex >= 0) {
-                    const activeFrame = s.animation.config.frames[s.animation.currentFrameIndex];
-                    if (activeFrame) activeImg = activeFrame;
-                }
+                let activeImg = getActiveSpriteImage(s);
 
                 if (activeImg.complete && activeImg.naturalWidth !== 0) {
-                    // Save context state before applying coordinate manipulations
                     ctx.save();
-
-                    // Move canvas origin to the center of the sprite
                     ctx.translate(s.x + s.w / 2, s.y + s.h / 2);
-
-                    // Flip coordinates if property flags are true
-                    const scaleX = s.flipX ? -1 : 1;
-                    const scaleY = s.flipY ? -1 : 1;
-                    ctx.scale(scaleX, scaleY);
-
-                    // Draw image centered at the origin (0, 0)
+                    ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
                     ctx.drawImage(activeImg, -s.w / 2, -s.h / 2, s.w, s.h);
-
-                    // Revert canvas grid configuration for next item 
                     ctx.restore();
                 } else {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
@@ -295,24 +345,25 @@
                 ctx.fillText(`Z: ${s.z}`, s.x, s.y - 4);
             }
 
-            // 2. Render FPS Overlay (Drawn last so it sits on top of all sprites)
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(10, 10, 55, 22);
             ctx.fillStyle = '#00ffcc';
             ctx.font = 'bold 12px monospace';
             ctx.fillText(`FPS: ${fps}`, 15, 25);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(V_WIDTH - 120, 10, 110, 22);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText(`SCORE: ${score}`, V_WIDTH - 110, 25);
         }
 
         function gameLoop(currentTime) {
-            // Calculate delta time
             const deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-
-            // Track frame execution metrics
             frameCount++;
             fpsTimer += deltaTime;
 
-            // Refresh counter every 500ms
             if (fpsTimer >= 500) {
                 fps = Math.round((frameCount * 1000) / fpsTimer);
                 frameCount = 0;
@@ -320,18 +371,13 @@
             }
 
             update(deltaTime);
-
-            // Sort by Z Layer priority
             sprites.sort((a, b) => a.z - b.z);
-
             render();
             requestAnimationFrame(gameLoop);
         }
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-
-        // Pass timestamp to the initial loop frame step
         requestAnimationFrame((time) => gameLoop(time));
     </script>
 
