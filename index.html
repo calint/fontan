@@ -37,6 +37,12 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // constants 
+        const MONSTER_VX = 1;
+        const PLAYER_STOM_BOUNCE = 6;
+        const PLAYER_SKIP = 2;
+        // --
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -131,14 +137,12 @@
             };
         }
 
-        const MONSTER_VX = 1;
-
         const sprites = [
             createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.4),
             createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
-            createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 2, false, false, MONSTER_VX, 0, 0)
+            createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 3, false, false, MONSTER_VX, 0, 0)
         ];
 
         const player = sprites[0];
@@ -221,8 +225,14 @@
             ctx.imageSmoothingEnabled = false;
         }
 
+        player.lastY = player.y;
+
         function update(deltaTime) {
             let isMoving = false;
+
+            // Store the player's Y position at the start of the frame before movement updates
+            player.lastY = player.y;
+
             player.vx = 0;
 
             if (keys['ArrowUp'] || keys['w']) {player.vy -= 0.5; isMoving = true;}
@@ -260,7 +270,7 @@
                         s.vy = 0;
 
                         if (s === player && isMoving) {
-                            s.vy = -2;
+                            s.vy = -PLAYER_SKIP;
                         }
                     }
                 }
@@ -269,22 +279,24 @@
             player.x = Math.max(0, Math.min(V_WIDTH - player.w, player.x));
             player.y = Math.max(0, Math.min(V_HEIGHT - player.h, player.y));
 
-            // --- STOMP DETECTION SYSTEM (AABB + PIXEL PERFECT NARROW CHECK) ---
+            // --- STOMP DETECTION SYSTEM (WITH PREVIOUS FRAME HEIGHT CHECK) ---
             if (player.x < monster.x + monster.w &&
                 player.x + player.w > monster.x &&
                 player.y < monster.y + monster.h &&
                 player.y + player.h > monster.y) {
 
-                // Broad phase verified, now running fine-tuned pixel scan
+                // 1. Pixel perfect narrow check
                 if (checkPixelCollision(player, monster)) {
-                    // Check if player's feet are structurally falling on the upper half quadrant profile
-                    if (player.vy > 0 && (player.y + player.h - player.vy) <= monster.y + monster.h * 0.5) {
-                        score += 1;
-                        player.vy = -6;
 
-                        monster.x = Math.floor(Math.random() * 150);
-                        monster.vx = 2;
-                        monster.flipX = false;
+                    // 2. State Verification: Player must be falling (vy > 0) AND 
+                    //    the player's bottom edge on the PREVIOUS frame must be above the monster's top edge
+                    const playerWasAbove = (player.lastY + player.h) <= (monster.y + 10); // 10px buffer for leniency
+
+                    if (player.vy > 0 && playerWasAbove) {
+                        score += 1;
+                        player.vy = -PLAYER_STOM_BOUNCE; // Propel player up into a bounce
+                        monster.vx = -monster.vx;
+                        monster.flipX = !monster.flipX;
                     }
                 }
             }
