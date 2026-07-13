@@ -62,7 +62,9 @@
             rock: "art/rock.png",
             moln1: "art/moln_1.png",
             moln2: "art/moln_2.png",
-            moln3: "art/moln_3.png"
+            moln3: "art/moln_3.png",
+            monsterWalk1: "art/Ushiri_monster_Walk1.png",
+            monsterWalk2: "art/Ushiri_monster_Walk2.png"
         };
 
         // --- GAME ENTITIES ---
@@ -113,7 +115,8 @@
 
         // Global animation registry/library configurations
         const ANIMATIONS = {
-            playerRun: createAnimationConfig([ASSETS.playerRun1, ASSETS.playerRun2], 125)
+            playerRun: createAnimationConfig([ASSETS.playerRun1, ASSETS.playerRun2], 125),
+            monsterWalk: createAnimationConfig([ASSETS.monsterWalk1, ASSETS.monsterWalk2], 150)
         };
 
         // --- SPRITE BUILDER ---
@@ -129,18 +132,19 @@
         }
 
         const sprites = [
-            // Added velocity (0) and gravity (0.2) to the player sprite
             createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.4),
             createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
             createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
+            createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 2, false, false, 1, 0, 0)
         ];
 
         const player = sprites[0];
+        const monster = sprites[4];
 
-        // Attaching the standalone animation data structure to our player sprite
+        // Attaching the standalone animation data structures to sprites
         player.animation = createAnimationInstance(ANIMATIONS.playerRun);
-
+        monster.animation = createAnimationInstance(ANIMATIONS.monsterWalk);
 
         // --- GAME ENGINE PROCESSES ---
         function resizeCanvas() {
@@ -172,6 +176,15 @@
                 player.vx = 2;
                 player.flipX = false;
                 isMoving = true;
+            }
+
+            // --- MONSTER MOVEMENT & EDGE TURNAROUND ---
+            if (monster.x <= 0) {
+                monster.vx = 1;
+                monster.flipX = false; // Walk right
+            } else if (monster.x + monster.w >= V_WIDTH) {
+                monster.vx = -1;
+                monster.flipX = true;  // Walk left
             }
 
             // Apply velocities and gravity
