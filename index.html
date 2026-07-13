@@ -126,22 +126,24 @@
         };
 
         // --- SPRITE BUILDER ---
-        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false, vx = 0, vy = 0, gravity = 0) {
+        function createSprite(imgSrc, x, y, w, h, z, flipX = false, flipY = false, vx = 0, vy = 0, gravity = 0, isCloud = false) {
             const img = new Image();
             img.src = imgSrc;
             return {
                 img,
                 x, y, w, h, z, flipX, flipY,
                 vx, vy, gravity,
+                isCloud, // Flag to identify cloud objects in update loop
                 animation: null
             };
         }
 
+        // Added speeds of -0.3, -0.2, and -0.4 to vx for the clouds, with isCloud set to true
         const sprites = [
             createSprite(ASSETS.player, 400, 200, 200, 200, 2, false, false, 0, 0, 0.4),
-            createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, 0, 0, 0),
-            createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, 0, 0, 0),
-            createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, 0, 0, 0),
+            createSprite(ASSETS.moln1, 10, -40, 220, 220, 1, false, false, -0.3, 0, 0, true),
+            createSprite(ASSETS.moln2, 318, 56, 220, 220, 1, false, false, -0.2, 0, 0, true),
+            createSprite(ASSETS.moln3, 530, 21, 290, 220, 1, false, false, -0.4, 0, 0, true),
             createSprite(ASSETS.monsterWalk1, 50, FLOOR_Y - 142, 150, 150, 3, false, false, MONSTER_VX, 0, 0)
         ];
 
@@ -259,7 +261,18 @@
 
             for (let i = 0; i < sprites.length; i++) {
                 const s = sprites[i];
-                s.x += s.vx;
+
+                // Keep moving sprite if it's not the player (clouds maintain their custom negative vx)
+                if (s !== player) {
+                    s.x += s.vx;
+                } else {
+                    s.x += s.vx;
+                }
+
+                // Cloud wrap-around logic: Check if the cloud has fully exited left
+                if (s.isCloud && s.x + s.w < 0) {
+                    s.x = V_WIDTH;
+                }
 
                 if (s.gravity > 0) {
                     s.vy += s.gravity;
