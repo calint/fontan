@@ -41,16 +41,13 @@
         const MONSTER_VX = 1;
         const PLAYER_STOM_BOUNCE = 6;
         const PLAYER_SKIP = 2;
+        const V_WIDTH = 800; // display width
+        const V_HEIGHT = 600; // display height
+        const FLOOR_Y = 454;
         // --
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        const V_WIDTH = 800;
-        const V_HEIGHT = 600;
-
-        // --- PHYSICS GLOBAL ---
-        const FLOOR_Y = 454;
 
         // --- GAME STATE ---
         let score = 0;
@@ -94,10 +91,10 @@
             const touchX = (e.touches[0].clientX - rect.left) * scaleX;
             const touchY = (e.touches[0].clientY - rect.top) * scaleY;
 
-            if (touchX < player.x) player.x -= 2;
-            if (touchX > player.x) player.x += 2;
-            if (touchY < player.y) player.y -= 2;
-            if (touchY > player.y) player.y += 2;
+            if (touchX < player.x) keys['a'] = true; else keys['a'] = false;
+            if (touchX > player.x) keys['d'] = true; else keys['d'] = false;
+            if (touchY < player.y) keys['w'] = true; else keys['w'] = false;
+            if (touchY > player.y) keys['d'] = true; else keys['d'] = false;
         }
 
         // --- SEPARATE ANIMATION SYSTEM DATA STRUCTURES ---
